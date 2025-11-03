@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Özgür Filistin Deniz Ablukası</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #333;
+        }
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+        #startButtonScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85); /* Koyu başlangıç ekranı */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 10;
+            text-align: center;
+        }
+        #startButton {
+            padding: 15px 30px;
+            font-size: 24px;
+            cursor: pointer;
+            background-color: #009736; /* Yeşil */
+            color: white;
+            border: 3px solid #ADFF2F;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        #startButton:hover {
+            background-color: #007f2a;
+        }
+        canvas {
+            display: block;
+            border: 5px solid #ADFF2F;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="startButtonScreen">
+            <h1>ÖZGÜR FİLİSTİN DENİZ ABLUKASI</h1>
+            <p>Gazze Kıyılarına Yardım Ulaştırma Operasyonu</p>
+            <button id="startButton">OYUNA BAŞLA</button>
+            <p style="margin-top: 30px; font-size: 14px;">Kontroller: Yön Tuşları ile hareket et.</p>
+            <p style="font-size: 14px;">Atışlar: [Space] Su | [B] Bez | [N] İlaç</p>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
