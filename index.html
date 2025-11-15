@@ -130,6 +130,18 @@
             background-color: rgba(240, 248, 255, 0.8);
         }
 
+        /* YENİ: İlaç Butonu Stili */
+        #syringeButton {
+            bottom: 100px; /* Bez butonunun üstü (20 + 70 + 10) */
+            left: 20px;
+            background-color: rgba(238, 42, 53, 0.5); /* C_RED, yarı saydam */
+            color: white;
+            font-size: 18px;
+        }
+        #syringeButton:active {
+            background-color: rgba(238, 42, 53, 0.8);
+        }
+
     </style>
 </head>
 <body>
@@ -154,6 +166,8 @@
         
         <!-- YENİ: BEZ FIRLATMA BUTONU EKLENDİ -->
         <div id="diaperButton" class="mobile-button">BEZ</div>
+        <!-- YENİ: İLAÇ FIRLATMA BUTONU EKLENDİ -->
+        <div id="syringeButton" class="mobile-button">İLAÇ</div>
     </div>
 
     <!-- === OYUN KODU (game.js içeriği) === -->
@@ -165,6 +179,7 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d'); 
         const diaperBtn = document.getElementById('diaperButton');
+        const syringeBtn = document.getElementById('syringeButton'); // YENİ
 
         // ... (Tüm C_ renk sabitleri aynı) ...
         const C_SKIN = '#FCD2A9';   
@@ -301,6 +316,10 @@
             
             diaperBtn.addEventListener('touchstart', handleDiaperButton, { passive: false });
             diaperBtn.addEventListener('touchend', e => e.preventDefault(), { passive: false });
+
+            // YENİ: İlaç butonu dinleyicisi
+            syringeBtn.addEventListener('touchstart', handleSyringeButton, { passive: false });
+            syringeBtn.addEventListener('touchend', e => e.preventDefault(), { passive: false });
         }
 
         function handleDiaperButton(e) {
@@ -311,6 +330,15 @@
             }
         }
         
+        // YENİ: İlaç butonu fonksiyonu
+        function handleSyringeButton(e) {
+            e.preventDefault();
+            e.stopPropagation(); 
+            if (gameState === 'playing') {
+                fireSyringe();
+            }
+        }
+
         // YENİ: DOKUNMA (TAP) Eylemini işleyen ayrı fonksiyon
         function handleTap(x, y) {
              const now = new Date().getTime();
@@ -448,6 +476,7 @@
             const isMobile = window.innerWidth <= 800 || window.innerHeight > window.innerWidth;
             if (isMobile) {
                 diaperBtn.style.display = 'flex';
+                syringeBtn.style.display = 'flex'; // YENİ
             }
 
             initializeGameObjects(); 
@@ -931,6 +960,7 @@
 
             if (isMobile && (gameState === 'win' || gameState === 'lose')) {
                  diaperBtn.style.display = 'none';
+                 syringeBtn.style.display = 'none'; // YENİ
             }
         }
 
