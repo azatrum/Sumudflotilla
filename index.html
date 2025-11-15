@@ -5,14 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Özgür Filistin Deniz Ablukası</title>
     <style>
-        /* Genel Sayfa Ayarları */
-        body {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+        /* YENİ: Genel Sayfa Ayarları (100vh -> 100%) */
+        html, body {
+            height: 100%;
             margin: 0;
+            padding: 0;
             background-color: #333;
             overflow: hidden; /* Kaydırmayı engelle */
             font-family: Arial, sans-serif;
@@ -22,13 +19,20 @@
             -webkit-user-select: none;
         }
 
-        /* Oyun Konteyneri */
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            /* height: 100vh; -> KALDIRILDI */
+        }
+
+        /* YENİ: Oyun Konteyneri (Relative) */
         #gameContainer {
-            position: absolute; /* YENİ: Konumu JS ile ayarlanacak */
-            /* width: 100%; KALDIRILDI */
-            /* height: 100%; KALDIRILDI */
+            position: relative; /* Absolute'dan relative'e döndü */
+            width: 100%; /* JS ile ayarlanacak */
+            height: 100%; /* JS ile ayarlanacak */
             max-width: 100%;
-            /* flex: 1 1 auto; KALDIRILDI */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -77,18 +81,15 @@
         canvas {
             display: block;
             border: 5px solid #ADFF2F;
-            width: 100%; /* YENİ: Stil genişliği %100 olacak */
-            height: 100%; /* YENİ: Stil yüksekliği %100 olacak */
-            /* height: auto; -> KALDIRILDI (esnemeyi/oranı korumayı buna neden oluyordu) */
+            width: 100%; 
+            height: 100%;
             box-sizing: border-box;
             touch-action: none;
         }
 
         /* === YENİ MEDYA SORGUSU (Mobil Görünüm) === */
         @media (max-width: 800px) or (orientation: portrait) {
-            body {
-                height: 100vh; 
-            }
+            /* body { height: 100%; } -> Zaten ayarlandı */
             
             #gameContainer {
                 width: 100%;
@@ -163,7 +164,6 @@
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d'); 
-        // YENİ: Bez butonu
         const diaperBtn = document.getElementById('diaperButton');
 
         // ... (Tüm C_ renk sabitleri aynı) ...
@@ -235,11 +235,8 @@
         let dragOffsetX = 0;
         let dragOffsetY = 0;
         let lastTapTime = 0;
-        // const DOUBLE_TAP_DELAY = 300; // KALDIRILDI
-        let autoTarget = null; // Otomatik toplama hedefi
-        let touchStartX = 0;
-        let touchStartY = 0;
-        let dragTouchId = null; // YENİ: Sürükleme yapan parmağın ID'si
+        let autoTarget = null; 
+        let dragTouchId = null; // Sürükleme yapan parmağın ID'si
 
         // Ses dosyası yolları (Orijinal yollar korundu)
         const SFX_WATER_FIRE = new Audio();
@@ -302,22 +299,19 @@
             canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
             canvas.addEventListener('contextmenu', e => e.preventDefault());
             
-            // YENİ: Bez Butonu Olay Dinleyicisi
             diaperBtn.addEventListener('touchstart', handleDiaperButton, { passive: false });
-            diaperBtn.addEventListener('touchend', e => e.preventDefault(), { passive: false }); // Sadece basmayı algıla
+            diaperBtn.addEventListener('touchend', e => e.preventDefault(), { passive: false });
         }
 
-        // YENİ: Bez Butonu Fonksiyonu
         function handleDiaperButton(e) {
             e.preventDefault();
-            e.stopPropagation(); // Dokunmanın canvas'a geçmesini engelle
+            e.stopPropagation(); 
             if (gameState === 'playing') {
                 fireDiaper();
             }
         }
         
         // YENİ: DOKUNMA (TAP) Eylemini işleyen ayrı fonksiyon
-        // Bu, sürüklemeden bağımsız olarak ateş etmeyi sağlar
         function handleTap(x, y) {
              const now = new Date().getTime();
             // 1. Düşmana dokunma (İlaç)
@@ -341,32 +335,35 @@
             lastTapTime = now;
         }
 
-
+        // YENİ: Multi-touch için güncellenmiş DOKUNMA BAŞLANGICI
         function handleTouchStart(e) {
             e.preventDefault();
-            // YENİ: Oyun bittiyse dokunarak yeniden başlat
             if (gameState === 'win' || gameState === 'lose') {
                 resetGame();
                 return;
             }
             if (gameState !== 'playing') return;
 
-            // YENİ: Multi-touch için tüm yeni dokunuşları işle
             const newTouches = e.changedTouches;
             
             for (let i = 0; i < newTouches.length; i++) {
                 const touch = newTouches[i];
                 const { x, y } = getCanvasCoords(touch);
                 
-                // Gemi sürüklemeyi başlat (eğer zaten sürüklenmiyorsa)
-                if (dragTouchId === null && isInside(x, y, playerShip)) {
-                    isDragging = true;
-                    dragTouchId = touch.identifier; // Bu parmağı sürükleme parmağı yap
-                    dragOffsetX = x - playerShip.x;
-                    dragOffsetY = y - playerShip.y;
-                    autoTarget = null; // Sürüklerken otomatik hedefi iptal et
+                // Gemiye mi dokunuldu?
+                if (isInside(x, y, playerShip)) {
+                    // Zaten başka bir parmakla sürüklenmiyor mu?
+                    if (dragTouchId === null) {
+                        // Sürüklemeyi bu parmakla başlat
+                        isDragging = true;
+                        dragTouchId = touch.identifier; 
+                        dragOffsetX = x - playerShip.x;
+                        dragOffsetY = y - playerShip.y;
+                        autoTarget = null; 
+                    }
+                    // Zaten sürükleniyorsa, gemiye dokunan ikinci parmak bir şey yapmaz
                 } else {
-                    // Sürükleme değilse, bu bir DOKUNMA eylemidir (Ateş et)
+                    // Gemiye dokunulmadı, o zaman bu bir ATEŞ ETME/TOPLAMA eylemidir
                     handleTap(x, y);
                 }
             }
@@ -376,17 +373,16 @@
             e.preventDefault();
             if (gameState !== 'playing' || !isDragging || dragTouchId === null) return;
 
-            // YENİ: Sadece sürükleme parmağını takip et
-            const movedTouches = e.changedTouches;
-            for (let i = 0; i < movedTouches.length; i++) {
-                const touch = movedTouches[i];
+            // Sadece sürükleme parmağını takip et
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
                 
                 if (touch.identifier === dragTouchId) {
                     const { x, y } = getCanvasCoords(touch);
                     playerShip.x = x - dragOffsetX;
                     playerShip.y = y - dragOffsetY;
-                    autoTarget = null; // Sürüklerken otomatik hedefi iptal et
-                    break; // Sürükleme parmağını bulduk, diğerlerine bakma
+                    autoTarget = null; 
+                    break; 
                 }
             }
         }
@@ -395,10 +391,9 @@
             e.preventDefault();
             if (gameState !== 'playing') return;
 
-            // YENİ: Bırakılan parmağın sürükleme parmağı olup olmadığını kontrol et
-            const endedTouches = e.changedTouches;
-            for (let i = 0; i < endedTouches.length; i++) {
-                const touch = endedTouches[i];
+            // Bırakılan parmağın sürükleme parmağı olup olmadığını kontrol et
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
                 
                 if (touch.identifier === dragTouchId) {
                     isDragging = false;
@@ -406,17 +401,13 @@
                     break;
                 }
             }
-            
-            // Not: Ateş etme parmağı bırakıldığında bir şey yapmaya gerek yok,
-            // çünkü eylem 'touchstart' anında gerçekleşti.
         }
         // ======================================
 
 
         function initializeBackgroundObjects() {
-            // YENİ: Arka plan nesneleri artık dinamik yüksekliğe göre oluşturuluyor
             backgroundObjects = [];
-            const objCount = Math.floor(canvas.height / 12); // Yüksekliğe göre nesne sayısı
+            const objCount = Math.floor(canvas.height / 12);
             for (let i = 0; i < objCount; i++) { backgroundObjects.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 8 + 5, type: 'rock', speedFactor: Math.random() * 0.7 + 0.3 }); }
             for (let i = 0; i < objCount / 5; i++) { backgroundObjects.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 25 + 15, type: 'fish', speedFactor: Math.random() * 0.8 + 0.2, dirX: Math.random() > 0.5 ? 1 : -1 }); }
             for (let i = 0; i < objCount / 2.5; i++) { backgroundObjects.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, width: Math.random() * 10 + 5, height: Math.random() * 30 + 20, type: 'seaweed', speedFactor: Math.random() * 0.4 + 0.1 }); }
@@ -425,7 +416,7 @@
         function initializeGameObjects() {
             playerShip = { 
                 x: canvas.width / 2, 
-                y: canvas.height - 120, // YENİ: Başlangıç pozisyonu yükseltildi (80'den 120'ye)
+                y: canvas.height - 120, // Başlangıç pozisyonu
                 width: 60,  
                 height: 100, 
                 speed: PLAYER_SPEED,
@@ -447,15 +438,13 @@
             isDragging = false;
             autoTarget = null;
             lastTapTime = 0;
-            dragTouchId = null; // YENİ: Sıfırla
+            dragTouchId = null; 
             initializeBackgroundObjects();
         }
 
         function resetGame() {
-            // YENİ: Başlangıç ekranını gizle (Enter ile veya tıklama ile yeniden başlatma için)
             document.getElementById('startButtonScreen').style.display = 'none';
             
-            // YENİ: Mobilde butonu göster
             const isMobile = window.innerWidth <= 800 || window.innerHeight > window.innerWidth;
             if (isMobile) {
                 diaperBtn.style.display = 'flex';
@@ -601,7 +590,7 @@
                     }
                     return false; 
                 }
-                return p.y < canvas.height + 50; // Dinamik yüksekliğe göre
+                return p.y < canvas.height + 50; 
             });
         }
 
@@ -635,7 +624,7 @@
                 if (keys['ArrowRight']) playerShip.x += playerShip.speed;
             }
 
-            // Gemi konumu sabitleme (clamp) - YENİ: Dinamik yüksekliğe göre
+            // Gemi konumu sabitleme (clamp)
             playerShip.x = Math.max(playerShip.width / 2, Math.min(canvas.width - playerShip.width / 2, playerShip.x));
             playerShip.y = Math.max(playerShip.height / 2 + 40, Math.min(canvas.height - playerShip.height / 2, playerShip.y)); 
 
@@ -657,8 +646,6 @@
         }
 
         // ... (updateEnemies, updateProjectiles, updateExplosions, updateBackground, updateCoast fonksiyonları BİREBİR AYNI) ...
-        // Not: updateEnemies filtresi (enemy.y < canvas.height + enemy.height) dinamik yükseklikle çalışır.
-        // Not: updateBackground (obj.y > canvas.height + 50) dinamik yükseklikle çalışır.
         function updateEnemies() {
             if (frameCount > ENEMY_SPAWN_DELAY && frameCount % ENEMY_SPAWN_INTERVAL === 0) { spawnEnemy(); }
             enemyShips.forEach(enemy => {
@@ -877,7 +864,6 @@
         }
 
         function drawHUD() {
-            // YENİ: HUD elemanları dinamik yüksekliğe (canvas.height) göre ayarlandı
             ctx.fillStyle = '#ADFF2F';
             ctx.font = '24px Arial, sans-serif'; 
             ctx.textAlign = 'left';
@@ -908,18 +894,17 @@
                 ctx.fillStyle = C_WHITE;
                 ctx.font = '16px Arial, sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('Su: [Space] | Bez: [B] | İlaç: [N]', canvas.width / 2, canvas.height - 20); // Alt orta
+                ctx.fillText('Su: [Space] | Bez: [B] | İlaç: [N]', canvas.width / 2, canvas.height - 20); 
             }
         }
 
         function drawMessage() {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; 
-            ctx.fillRect(0, 0, canvas.width, canvas.height); // Dinamik yüksekliği kapla
+            ctx.fillRect(0, 0, canvas.width, canvas.height); 
             ctx.fillStyle = C_WHITE;
             ctx.font = 'bold 28px Arial, sans-serif';
             ctx.textAlign = 'center';
             
-            // Mesajları ekranın ortasına almak için
             const midY = canvas.height / 2;
 
             if (gameState === 'lose') {
@@ -944,7 +929,6 @@
             ctx.font = '24px Arial,serif';
             ctx.fillText(restartMessage, canvas.width / 2, midY + 90);
 
-            // YENİ: Mobilde oyun bittiğinde butonu gizle
             if (isMobile && (gameState === 'win' || gameState === 'lose')) {
                  diaperBtn.style.display = 'none';
             }
@@ -954,10 +938,10 @@
             function interpolateColor(color1, color2, factor) { if (factor <= 0) return color1; if (factor >= 1) return color2; const c1 = hexToRgb(color1); const c2 = hexToRgb(color2); const r = Math.round(c1.r + (c2.r - c1.r) * factor); const g = Math.round(c1.g + (c2.g - c1.g) * factor); const b = Math.round(c1.b + (c2.b - c1.b) * factor); return `rgb(${r}, ${g}, ${b})`; }
             function hexToRgb(hex) { const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i; hex = hex.replace(shorthandRegex, function(m, r, g, b) { return r + r + g + g + b + b; }); const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null; }
 
-            // 1. Arka Plan (YENİ: Dinamik yüksekliği doldurur)
+            // 1. Arka Plan
             ctx.fillStyle = C_SEA_DEEP; ctx.fillRect(0, 0, canvas.width, canvas.height);
             waveOffset = (waveOffset + 0.5) % (canvas.width * 2); 
-            for (let i = 0; i < canvas.height; i += 20) { // canvas.height'e kadar çizer
+            for (let i = 0; i < canvas.height; i += 20) { 
                 const depthFactor = i / canvas.height; 
                 const currentWaterColor = interpolateColor(C_SEA_SURFACE, C_SEA_DEEP, depthFactor);
                 const waveHeight = 8 * (1 - depthFactor) + 2; const waveFrequency = 0.02 * (1 - depthFactor) + 0.01; const waveSpeed = 0.01 * (1 - depthFactor) + 0.005;
@@ -1050,16 +1034,18 @@
         function resizeCanvas() {
             const container = document.getElementById('gameContainer');
             
-            // YENİ: Görünür alanı kullan (telefon tuşları/URL barı hariç)
+            // Görünür alanı kullan (telefon tuşları/URL barı hariç)
             const vp = window.visualViewport;
             const containerWidth = vp.width;
             const containerHeight = vp.height;
 
-            // Konteyneri görünür alana sığdır
+            // Konteyneri görünür alana sığdır (CSS flex ortalaması için)
             container.style.width = `${containerWidth}px`;
             container.style.height = `${containerHeight}px`;
+            /* Konumlandırma kaldırıldı, flex'e bırakıldı
             container.style.top = `${vp.offsetTop}px`;
             container.style.left = `${vp.offsetLeft}px`;
+            */
             
             // Konteynerin (ekranın) mevcut en-boy oranını al
             const containerRatio = containerWidth / containerHeight;
@@ -1080,10 +1066,10 @@
 
         function initGame() {
             if (canvas && ctx) {
-                // YENİ: Boyutlandırmayı, objeler oluşmadan HEMEN yap
+                // Boyutlandırmayı, objeler oluşmadan HEMEN yap
                 resizeCanvas();
                 window.addEventListener('resize', resizeCanvas);
-                window.visualViewport.addEventListener('resize', resizeCanvas); // YENİ: Görünür alan değişimini dinle
+                window.visualViewport.addEventListener('resize', resizeCanvas); // Görünür alan değişimini dinle
 
                 initializeGameObjects(); // Artık doğru (dinamik) yüksekliği alacak
                 gameState = 'ready'; 
@@ -1114,15 +1100,6 @@
             });
             resetGame();
         });
-
-        // YENİ: Oyun bittiğinde dokunarak yeniden başlatma (handleTouchStart'a taşındı)
-        /*
-        canvas.addEventListener('click', () => {
-            if (gameState === 'win' || gameState === 'lose') {
-                resetGame();
-            }
-        });
-        */
 
         initGame();
 
