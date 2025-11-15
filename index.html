@@ -24,11 +24,11 @@
 
         /* Oyun Konteyneri */
         #gameContainer {
-            position: relative;
-            width: 100%; /* YENİ: Konteyner ekranı dolduracak */
-            height: 100%; /* YENİ: Konteyner ekranı dolduracak */
+            position: absolute; /* YENİ: Konumu JS ile ayarlanacak */
+            /* width: 100%; KALDIRILDI */
+            /* height: 100%; KALDIRILDI */
             max-width: 100%;
-            flex: 1 1 auto;
+            /* flex: 1 1 auto; KALDIRILDI */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -239,6 +239,7 @@
         let autoTarget = null; // Otomatik toplama hedefi
         let touchStartX = 0;
         let touchStartY = 0;
+        let dragTouchId = null; // YENİ: Sürükleme yapan parmağın ID'si
 
         // Ses dosyası yolları (Orijinal yollar korundu)
         const SFX_WATER_FIRE = new Audio();
@@ -314,6 +315,32 @@
                 fireDiaper();
             }
         }
+        
+        // YENİ: DOKUNMA (TAP) Eylemini işleyen ayrı fonksiyon
+        // Bu, sürüklemeden bağımsız olarak ateş etmeyi sağlar
+        function handleTap(x, y) {
+             const now = new Date().getTime();
+            // 1. Düşmana dokunma (İlaç)
+            for (const enemy of enemyShips) {
+                if (isInside(x, y, enemy)) {
+                    fireSyringe();
+                    lastTapTime = now; 
+                    return;
+                }
+            }
+            // 2. Hediyeye dokunma (Otomatik Topla)
+            for (const pickup of pickups) {
+                if (isInside(x, y, pickup)) {
+                    autoTarget = pickup;
+                    lastTapTime = now;
+                    return;
+                }
+            }
+            // 3. Boş alana dokunma (Sadece SU)
+            fireWater();
+            lastTapTime = now;
+        }
+
 
         function handleTouchStart(e) {
             e.preventDefault();
@@ -324,31 +351,43 @@
             }
             if (gameState !== 'playing') return;
 
-            const touch = e.touches[0];
-            const { x, y } = getCanvasCoords(touch);
-
-            touchStartX = x;
-            touchStartY = y;
-
-            // Gemi sürüklemeyi başlat
-            if (isInside(x, y, playerShip)) {
-                isDragging = true;
-                dragOffsetX = x - playerShip.x;
-                dragOffsetY = y - playerShip.y;
-                autoTarget = null; // Sürüklerken otomatik hedefi iptal et
+            // YENİ: Multi-touch için tüm yeni dokunuşları işle
+            const newTouches = e.changedTouches;
+            
+            for (let i = 0; i < newTouches.length; i++) {
+                const touch = newTouches[i];
+                const { x, y } = getCanvasCoords(touch);
+                
+                // Gemi sürüklemeyi başlat (eğer zaten sürüklenmiyorsa)
+                if (dragTouchId === null && isInside(x, y, playerShip)) {
+                    isDragging = true;
+                    dragTouchId = touch.identifier; // Bu parmağı sürükleme parmağı yap
+                    dragOffsetX = x - playerShip.x;
+                    dragOffsetY = y - playerShip.y;
+                    autoTarget = null; // Sürüklerken otomatik hedefi iptal et
+                } else {
+                    // Sürükleme değilse, bu bir DOKUNMA eylemidir (Ateş et)
+                    handleTap(x, y);
+                }
             }
         }
 
         function handleTouchMove(e) {
             e.preventDefault();
-            if (gameState !== 'playing') return;
+            if (gameState !== 'playing' || !isDragging || dragTouchId === null) return;
 
-            if (isDragging) {
-                const touch = e.touches[0];
-                const { x, y } = getCanvasCoords(touch);
-                playerShip.x = x - dragOffsetX;
-                playerShip.y = y - dragOffsetY;
-                autoTarget = null; // Sürüklerken otomatik hedefi iptal et
+            // YENİ: Sadece sürükleme parmağını takip et
+            const movedTouches = e.changedTouches;
+            for (let i = 0; i < movedTouches.length; i++) {
+                const touch = movedTouches[i];
+                
+                if (touch.identifier === dragTouchId) {
+                    const { x, y } = getCanvasCoords(touch);
+                    playerShip.x = x - dragOffsetX;
+                    playerShip.y = y - dragOffsetY;
+                    autoTarget = null; // Sürüklerken otomatik hedefi iptal et
+                    break; // Sürükleme parmağını bulduk, diğerlerine bakma
+                }
             }
         }
 
@@ -356,47 +395,20 @@
             e.preventDefault();
             if (gameState !== 'playing') return;
 
-            const touch = e.changedTouches[0];
-            const { x, y } = getCanvasCoords(touch);
-
-            // Sürüklemeyi bitir
-            if (isDragging) {
-                isDragging = false;
-                return;
-            }
-
-            // Sürükleme değil, dokunma (tap) olup olmadığını kontrol et
-            const dist = Math.hypot(x - touchStartX, y - touchStartY);
-            if (dist > 10) { 
-                return; 
-            }
-
-            // === DOKUNMA (TAP) İŞLEMLERİ ===
-            const now = new Date().getTime();
-            // const timeSinceLastTap = now - lastTapTime; // KALDIRILDI
-
-            // 1. Düşmana dokunma (İlaç)
-            for (const enemy of enemyShips) {
-                if (isInside(x, y, enemy)) {
-                    fireSyringe();
-                    lastTapTime = now; 
-                    return;
+            // YENİ: Bırakılan parmağın sürükleme parmağı olup olmadığını kontrol et
+            const endedTouches = e.changedTouches;
+            for (let i = 0; i < endedTouches.length; i++) {
+                const touch = endedTouches[i];
+                
+                if (touch.identifier === dragTouchId) {
+                    isDragging = false;
+                    dragTouchId = null; // Sürüklemeyi bırak
+                    break;
                 }
             }
-
-            // 2. Hediyeye dokunma (Otomatik Topla)
-            for (const pickup of pickups) {
-                if (isInside(x, y, pickup)) {
-                    autoTarget = pickup;
-                    lastTapTime = now;
-                    return;
-                }
-            }
-
-            // 3. Boş alana dokunma (Sadece SU)
-            // Çift tıklama mantığı kaldırıldı
-            fireWater();
-            lastTapTime = now;
+            
+            // Not: Ateş etme parmağı bırakıldığında bir şey yapmaya gerek yok,
+            // çünkü eylem 'touchstart' anında gerçekleşti.
         }
         // ======================================
 
@@ -413,7 +425,7 @@
         function initializeGameObjects() {
             playerShip = { 
                 x: canvas.width / 2, 
-                y: canvas.height - 80, // YENİ: Dinamik yüksekliğe göre ayarlandı
+                y: canvas.height - 120, // YENİ: Başlangıç pozisyonu yükseltildi (80'den 120'ye)
                 width: 60,  
                 height: 100, 
                 speed: PLAYER_SPEED,
@@ -435,6 +447,7 @@
             isDragging = false;
             autoTarget = null;
             lastTapTime = 0;
+            dragTouchId = null; // YENİ: Sıfırla
             initializeBackgroundObjects();
         }
 
@@ -1033,11 +1046,20 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // YENİ: Dinamik Boyutlandırma Fonksiyonu
+        // YENİ: Dinamik Boyutlandırma Fonksiyonu (Görünür Alanı Kullanır)
         function resizeCanvas() {
             const container = document.getElementById('gameContainer');
-            const containerWidth = container.clientWidth;
-            const containerHeight = container.clientHeight;
+            
+            // YENİ: Görünür alanı kullan (telefon tuşları/URL barı hariç)
+            const vp = window.visualViewport;
+            const containerWidth = vp.width;
+            const containerHeight = vp.height;
+
+            // Konteyneri görünür alana sığdır
+            container.style.width = `${containerWidth}px`;
+            container.style.height = `${containerHeight}px`;
+            container.style.top = `${vp.offsetTop}px`;
+            container.style.left = `${vp.offsetLeft}px`;
             
             // Konteynerin (ekranın) mevcut en-boy oranını al
             const containerRatio = containerWidth / containerHeight;
@@ -1052,7 +1074,6 @@
             canvas.height = worldHeight;
             
             // Canvas'ın stil (görünüm) boyutunu konteyneri tam dolduracak şekilde ayarla
-            // (Bu, CSS'deki %100'ü zaten yapıyor ama JS ile de garantiye alalım)
             canvas.style.width = `${containerWidth}px`;
             canvas.style.height = `${containerHeight}px`; 
         }
@@ -1062,6 +1083,7 @@
                 // YENİ: Boyutlandırmayı, objeler oluşmadan HEMEN yap
                 resizeCanvas();
                 window.addEventListener('resize', resizeCanvas);
+                window.visualViewport.addEventListener('resize', resizeCanvas); // YENİ: Görünür alan değişimini dinle
 
                 initializeGameObjects(); // Artık doğru (dinamik) yüksekliği alacak
                 gameState = 'ready'; 
